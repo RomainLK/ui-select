@@ -65,6 +65,7 @@
 
   .constant('uiSelectConfig', {
     theme: 'bootstrap',
+    dupes: false,
     searchEnabled: true,
     placeholder: '', // Empty by default, like HTML tag <select>
     refreshDelay: 1000 // In milliseconds
@@ -159,6 +160,7 @@
     ctrl.refreshDelay = undefined; // Initialized inside uiSelectChoices directive link function
     ctrl.multiple = false; // Initialized inside uiSelect directive link function
     ctrl.disableChoiceExpression = undefined; // Initialized inside uiSelect directive link function
+    ctrl.dupes = undefined; // Initialized inside uiSelect directive link function
 
     ctrl.isEmpty = function() {
       return angular.isUndefined(ctrl.selected) || ctrl.selected === null || ctrl.selected === '';
@@ -247,7 +249,7 @@
           if (!angular.isArray(items)) {
             throw uiSelectMinErr('items', "Expected an array but got '{0}'.", items);
           } else {
-            if (ctrl.multiple){
+            if (ctrl.multiple && !ctrl.dupes){
               //Remove already selected items (ex: while searching)
               var filteredItems = items.filter(function(i) {return ctrl.selected.indexOf(i) < 0;});
               setItemsFn(filteredItems);
@@ -261,7 +263,7 @@
 
       });
 
-      if (ctrl.multiple){
+      if (ctrl.multiple && !ctrl.dupes){
         //Remove already selected items 
         $scope.$watchCollection('$select.selected', function(selectedItems){
           var data = ctrl.parserResult.source($scope);
@@ -748,6 +750,12 @@
           $select.resetSearchInput = resetSearchInput !== undefined ? resetSearchInput : true;
         });
 
+        attrs.$observe('dupes', function() {
+          // $eval() is needed otherwise we get a string instead of a boolean
+          var dupes = scope.$eval(attrs.dupes);
+          $select.dupes = dupes !== undefined ? dupes : false;
+        });
+
         if ($select.multiple){
           scope.$watchCollection('$select.selected', function() {
             ngModel.$setViewValue(Date.now()); //Set timestamp as a unique string to force changes
@@ -911,7 +919,8 @@
         // Gets theme attribute from parent (ui-select)
         var theme = tElement.parent().attr('theme') || uiSelectConfig.theme;
         var multi = tElement.parent().attr('multiple');
-        return theme + (multi ? '/match-multiple.tpl.html' : '/match.tpl.html');
+        var dupes = tElement.parent().attr('dupes') || uiSelectConfig.dupes;
+        return theme + (multi ? (dupes ? '/match-multiple-dupes.tpl.html' : '/match-multiple.tpl.html') : '/match.tpl.html');
       },
       link: function(scope, element, attrs, $select) {
         attrs.$observe('placeholder', function(placeholder) {
